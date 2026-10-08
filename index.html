@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#120a06">
+  <meta name="description" content="Digger: a fast-paced WebGL game. Dig your way through the Earth to China, dodging lava, cave-ins and subway trains.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%235a3a1e'/%3E%3Ccircle cx='16' cy='12' r='7' fill='%23ffd23f'/%3E%3Cpath d='M9 18h14l-7 11z' fill='%23bbb'/%3E%3C/svg%3E">
+  <title>Digger: Dig to China</title>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-box"><span class="lbl">Score</span><span id="hud-score">0</span></div>
+      <div class="hud-box"><span class="lbl">Depth</span><span id="hud-depth">0 km</span></div>
+      <div class="hud-box hud-level"><span class="lbl">Drill <span id="hud-level">Lv 1</span></span><div class="bar"><div id="hud-xp"></div></div></div>
+      <div class="hud-box"><span id="hud-hearts">♥♥♥</span></div>
+      <button id="btn-mute" type="button" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div id="hud-band"></div>
+    <div id="hud-msg"></div>
+    <div id="hud-combo"></div>
+    <div id="hud-pop"></div>
+  </div>
+
+  <div id="touch">
+    <div class="pad pad-left">
+      <button type="button" class="pbtn" data-dir="left" aria-label="Left">◀</button>
+      <button type="button" class="pbtn" data-dir="right" aria-label="Right">▶</button>
+    </div>
+    <div class="pad pad-right">
+      <button type="button" class="pbtn" data-dir="up" aria-label="Jump / dig up">▲</button>
+      <button type="button" class="pbtn pbtn-dig" data-dir="down" aria-label="Dig down">▼</button>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div id="overlay-card"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
