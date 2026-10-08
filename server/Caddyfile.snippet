@@ -1,0 +1,6 @@
+# Add inside the pikos.org { ... } site block in /etc/caddy/Caddyfile,
+# above the existing `handle_path /onni/*` block:
+handle /onni/digger/api/* {
+    uri strip_prefix /onni/digger/api
+    reverse_proxy 127.0.0.1:8796
+}

@@ -48,3 +48,21 @@ body.levelup::after { content: ''; position: fixed; inset: 0; pointer-events: no
 #overlay-card .go { margin-top: 14px; font-weight: 900; font-size: 18px; color: #fff; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
 #overlay-card .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; text-align: left; font-size: 13px; margin: 10px 0; }
+
+/* leaderboard + sign-in */
+#online-slot { margin-top: 14px; text-align: left; }
+.online { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.online-head { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 6px; }
+.online .muted { opacity: 0.65; font-size: 12px; margin: 6px 0 0; }
+.online .status { color: var(--gold); font-weight: 700; margin: 8px 0 0; font-size: 13px; }
+.board { list-style: none; margin: 0; padding: 0; max-height: 200px; overflow-y: auto; }
+.board li { display: grid; grid-template-columns: 22px 22px 1fr auto auto; gap: 6px; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.board li.me { color: var(--gold); }
+.board .rank { opacity: 0.6; font-weight: 700; }
+.board .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board .pts { font-weight: 800; }
+.board .km { opacity: 0.6; font-size: 11px; min-width: 56px; text-align: right; }
+.avatar { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.12); object-fit: cover; }
+.who { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.who .link { background: none; border: none; color: var(--gold); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; margin-left: auto; }
+.gsi-wrap { display: flex; justify-content: center; margin-top: 10px; min-height: 44px; }

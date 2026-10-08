@@ -5,6 +5,7 @@ import { Input } from './input';
 import { GameAudio } from './audio';
 import { Hud } from './hud';
 import { Game } from './game';
+import { Online } from './online';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const hud = new Hud();
@@ -20,6 +21,10 @@ try {
 const input = new Input(canvas, document.getElementById('touch')!);
 const audio = new GameAudio();
 const game = new Game(gfx, input, audio, hud);
+const online = new Online();
+game.online = online;
+online.onChange(() => game.renderOnline());
+void online.init();
 
 function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -32,7 +37,10 @@ resize();
 
 // Audio must be unlocked inside a user gesture.
 const unlock = () => { audio.init(); };
-hud.overlayEl.addEventListener('pointerdown', (e) => { e.preventDefault(); unlock(); game.menuAction(); });
+hud.overlayEl.addEventListener('pointerdown', (e) => {
+  if ((e.target as HTMLElement).closest('#online-slot')) return; // leaderboard / sign-in panel
+  e.preventDefault(); unlock(); game.menuAction();
+});
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (game.state === 'playing') game.pause(); else if (game.state === 'paused') game.menuAction(); return; }
   if (e.key === 'm' || e.key === 'M') { toggleMute(); return; }

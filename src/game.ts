@@ -5,6 +5,7 @@ import { World, W, H, END_ROW, KM_PER_ROW, SPAWN_X, HARD, VALUE, GEM_NAME, BAND_
 import { Input } from './input';
 import { GameAudio } from './audio';
 import { Hud } from './hud';
+import { Online } from './online';
 
 const STEP = 1 / 60;
 const P_W = 0.7, P_H = 0.86;
@@ -65,6 +66,8 @@ export class Game {
   private amb = [0, 0, 0];
   private lastLavaSfx = 0;
 
+  online: Online | null = null;
+
   constructor(private gfx: Renderer, private input: Input, private audio: GameAudio, private hud: Hud) {
     try { this.best = +(localStorage.getItem('digger.best') || 0); this.bestDepth = +(localStorage.getItem('digger.bestDepth') || 0); } catch { /* ignore */ }
     this.world = new World(1);
@@ -119,7 +122,15 @@ export class Game {
         ? 'Hold anywhere to dig down · drag to move or dig sideways · swipe up to jump · or use the buttons'
         : '<kbd>←</kbd><kbd>→</kbd> move/dig · <kbd>↓</kbd> dig down · <kbd>↑</kbd>/<kbd>Space</kbd> jump or dig up · WASD works too'}</p>
       ${this.best ? `<div class="stats"><div class="stat"><b>${this.best.toLocaleString('en-US')}</b><span>Best score</span></div><div class="stat"><b>${this.bestDepth.toLocaleString('en-US')} km</b><span>Deepest</span></div></div>` : ''}
-      <div class="go">${touch ? 'Tap to start digging' : 'Click or press any key to start'}</div>`);
+      <div class="go">${touch ? 'Tap to start digging' : 'Click or press any key to start'}</div>
+      <div id="online-slot"></div>`);
+    this.renderOnline();
+  }
+
+  /** Re-render the leaderboard / sign-in panel inside the current overlay (if any). */
+  renderOnline() {
+    const slot = document.getElementById('online-slot');
+    if (slot && this.online) this.online.render(slot);
   }
 
   private gameOver(reason: string) {
@@ -136,7 +147,10 @@ export class Game {
         <div class="stat"><b>${this.gems}</b><span>Gems</span></div>
         <div class="stat"><b>${this.best.toLocaleString('en-US')}</b><span>Best</span></div>
       </div>
-      <div class="go">Tap or press any key to try again</div>`);
+      <div class="go">Tap or press any key to try again</div>
+      <div id="online-slot"></div>`);
+    this.online?.submit({ score: this.score, depthKm: this.depthKm(), level: this.level, won: false });
+    this.renderOnline();
   }
 
   private win() {
@@ -154,7 +168,10 @@ export class Game {
         <div class="stat"><b>${this.gems}</b><span>Gems</span></div>
         <div class="stat"><b>Lv ${this.level}</b><span>Drill</span></div>
       </div>
-      <div class="go">Tap or press any key to dig again</div>`);
+      <div class="go">Tap or press any key to dig again</div>
+      <div id="online-slot"></div>`);
+    this.online?.submit({ score: this.score, depthKm: this.depthKm(), level: this.level, won: true });
+    this.renderOnline();
   }
 
   private saveBest() {
