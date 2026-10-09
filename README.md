@@ -41,7 +41,10 @@ ssh -p 2323 onni@pikos.org 'cp ~/digger-backend/digger.service ~/.config/systemd
 ```
 
 `~/digger-backend/config.json` holds the port and accepted client IDs (see `server/config.example.json`).
-Caddy must route the API to the service; the admin adds the block from `server/Caddyfile.snippet`.
+Caddy must route the API to the service. The permanent way is the block in `server/Caddyfile.snippet`
+in `/etc/caddy/Caddyfile` (needs root). Until that is done, `server/caddy-route.sh` injects the same
+route into the running Caddy through its local admin API, and the `digger-caddy-route.timer` user
+timer re-applies it within two minutes of any Caddy reload.
 
 ## Development
 
