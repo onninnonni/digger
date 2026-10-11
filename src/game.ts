@@ -86,7 +86,7 @@ export class Game {
     this.safe = { x: SPAWN_X + 0.5, y: 3.5 };
     this.falling = []; this.parts = []; this.dig = null; this.monsters = [];
     this.shield = false; this.speedT = 0; this.monsterT = 10; this.flip = 0;
-    this.trains = this.world.tunnels.map((row) => ({ row, active: false, x: 0, dir: 1, cd: 2 + Math.random() * 6, warned: false, speed: 20 }));
+    this.trains = this.world.tunnels.map((row) => ({ row, active: false, x: 0, dir: 1, cd: 2 + Math.random() * 6, warned: false, speed: 22 }));
     this.score = 0; this.level = 1; this.xpBase = 0; this.xpNext = 500; this.hearts = 3; this.maxRow = 0; this.gems = 0;
     this.combo = 0; this.comboT = 0; this.shake = 0; this.elapsed = 0; this.acc = 0;
     this.lavaRainT = 6; this.caveInT = 8; this.camY = -3;
@@ -371,7 +371,7 @@ export class Game {
     if (t === T.GAS) { this.explode(x, y, 2); return; }
 
     // cave-in: tiles above the fresh hole may crumble
-    const base = 0.08 + Math.min(0.3, y / 1800);
+    const base = 0.1 + Math.min(0.34, y / 1600);
     for (let dy = 1; dy <= 3; dy++) {
       const tt = w.get(x, y - dy);
       if (crumbly(tt) && Math.random() < base / dy) { w.set(x, y - dy, T.CRUMBLE); w.timer[(y - dy) * W + x] = 0.5 + Math.random() * 1.4; if (dy === 1) this.audio.crumble(); }
@@ -439,7 +439,7 @@ export class Game {
 
   private respawn() {
     const p = this.player, w = this.world;
-    p.x = this.safe.x; p.y = this.safe.y; p.vx = 0; p.vy = 0; p.invuln = 2.4;
+    p.x = this.safe.x; p.y = this.safe.y; p.vx = 0; p.vy = 0; p.invuln = 2.0;
     const cx = Math.floor(p.x), cy = Math.floor(p.y);
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
       const t = w.get(cx + dx, cy + dy);
@@ -545,13 +545,13 @@ export class Game {
       if (dist > 70) continue;
       if (!tr.active) {
         tr.cd -= dt;
-        if (!tr.warned && tr.cd <= 2.2) { tr.warned = true; tr.dir = Math.random() < 0.5 ? -1 : 1; if (dist < 28) this.audio.horn(); }
+        if (!tr.warned && tr.cd <= 1.9) { tr.warned = true; tr.dir = Math.random() < 0.5 ? -1 : 1; if (dist < 28) this.audio.horn(); }
         if (tr.cd <= 0) { tr.active = true; tr.x = tr.dir > 0 ? -TRAIN_LEN : W; if (dist < 28) this.audio.trainPass(); }
         continue;
       }
       tr.x += tr.dir * tr.speed * dt;
       if (dist < 14) this.shake = Math.min(0.5, this.shake + dt * 1.5);
-      if ((tr.dir > 0 && tr.x > W + 1) || (tr.dir < 0 && tr.x + TRAIN_LEN < -1)) { tr.active = false; tr.warned = false; tr.cd = 3.5 + Math.random() * 7; continue; }
+      if ((tr.dir > 0 && tr.x > W + 1) || (tr.dir < 0 && tr.x + TRAIN_LEN < -1)) { tr.active = false; tr.warned = false; tr.cd = 3 + Math.random() * 6; continue; }
       const py0 = p.y - P_H / 2, py1 = p.y + P_H / 2, px0 = p.x - P_W / 2, px1 = p.x + P_W / 2;
       if (py1 > tr.row + 0.1 && py0 < tr.row + 1.9 && px1 > tr.x && px0 < tr.x + TRAIN_LEN) this.hurt('Hit by a subway train');
     }
@@ -561,7 +561,7 @@ export class Game {
     const w = this.world, p = this.player, py = Math.floor(p.y), b = band(Math.max(0, py));
     this.lavaRainT -= dt;
     if (this.lavaRainT <= 0) {
-      this.lavaRainT = b >= 3 && b <= 4 ? 2.2 + Math.random() * 3 : b === 2 || b === 5 ? 5 + Math.random() * 6 : 30;
+      this.lavaRainT = b >= 3 && b <= 4 ? 1.8 + Math.random() * 2.6 : b === 2 || b === 5 ? 4 + Math.random() * 5 : 30;
       for (let tries = 0; tries < 10; tries++) {
         const x = 1 + Math.floor(Math.random() * (W - 2)), r = py - 5 - Math.floor(Math.random() * 14);
         if (r > 6 && w.get(x, r) === T.AIR && w.get(x, r + 1) === T.AIR) {
@@ -573,7 +573,7 @@ export class Game {
     }
     this.caveInT -= dt;
     if (this.caveInT <= 0) {
-      this.caveInT = 4 + Math.random() * 6;
+      this.caveInT = 3.5 + Math.random() * 5;
       for (let tries = 0; tries < 10; tries++) {
         const x = 1 + Math.floor(Math.random() * (W - 2)), r = py - 2 - Math.floor(Math.random() * 12);
         if (r > 5 && w.get(x, r) === T.AIR && crumbly(w.get(x, r - 1))) {
@@ -594,7 +594,7 @@ export class Game {
       if (r < 10 || r >= END_ROW - 6) continue;
       if (w.get(x, r) !== T.AIR || !solid(w.get(x, r + 1))) continue;
       const kind: Monster['kind'] = band(r) >= 3 ? 'beetle' : 'mole';
-      this.monsters.push({ kind, x: x + 0.5, y: r + 0.5, vx: 0, vy: 0, dir: 1, hp: kind === 'beetle' ? 4 : 3, digT: 0, digKey: -1, onGround: false, hurtCd: 0 });
+      this.monsters.push({ kind, x: x + 0.5, y: r + 0.5, vx: 0, vy: 0, dir: 1, hp: kind === 'beetle' ? 5 : 3, digT: 0, digKey: -1, onGround: false, hurtCd: 0 });
       this.audio.rumble();
       return;
     }
@@ -636,7 +636,7 @@ export class Game {
       const m = ms[k];
       if (Math.abs(m.y - p.y) > 45) { ms.splice(k, 1); continue; }
       m.hurtCd = Math.max(0, m.hurtCd - dt);
-      const speed = m.kind === 'beetle' ? 3.6 : 2.8;
+      const speed = m.kind === 'beetle' ? 3.9 : 3.1;
       const dx = p.x - m.x, dy = p.y - m.y;
       const cx = Math.floor(m.x), cy = Math.floor(m.y);
       let want = Math.abs(dx) > 0.35 ? Math.sign(dx) : 0;
@@ -658,22 +658,22 @@ export class Game {
         if (m.digKey !== digCell) { m.digKey = digCell; m.digT = 0; }
         m.digT += dt;
         if (Math.random() < 0.15) this.burst(m.x + m.dir * 0.4, m.y, 2, COLOR[T.DIRT], 2, 0.1, 0.4);
-        if (m.digT > (m.kind === 'beetle' ? 0.8 : 1.2)) { w.set(digCell % W, Math.floor(digCell / W), T.AIR); m.digKey = -1; }
+        if (m.digT > (m.kind === 'beetle' ? 0.7 : 1.0)) { w.set(digCell % W, Math.floor(digCell / W), T.AIR); m.digKey = -1; }
       } else m.digKey = -1;
       m.vy = Math.min(m.vy + 36 * dt, 24);
       this.moveMonster(m, m.vx * dt, 0);
       this.moveMonster(m, 0, m.vy * dt);
       if (m.kind === 'mole' && w.get(Math.floor(m.x), Math.floor(m.y)) === T.LAVA) { this.killMonster(m, false); continue; }
       if (m.hurtCd <= 0 && m.x + M_W / 2 > p.x - P_W / 2 && m.x - M_W / 2 < p.x + P_W / 2 && m.y + M_H / 2 > p.y - P_H / 2 && m.y - M_H / 2 < p.y + P_H / 2) {
-        m.hurtCd = 1.6;
+        m.hurtCd = 1.3;
         this.hurt(m.kind === 'beetle' ? 'Mauled by a magma beetle' : 'Bitten by a mole');
         if (this.state !== 'playing') return;
       }
     }
     this.monsterT -= dt;
     if (this.monsterT <= 0) {
-      this.monsterT = 7 + Math.random() * 8;
-      if (Math.floor(p.y) > 35 && ms.length < 3) this.spawnMonster();
+      this.monsterT = 5.5 + Math.random() * 6.5;
+      if (Math.floor(p.y) > 30 && ms.length < 4) this.spawnMonster();
     }
   }
 

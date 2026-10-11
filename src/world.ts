@@ -89,7 +89,7 @@ export class World {
       case 0:
         if (nCave > 0.80 && r > 12) return T.AIR;
         if (nSand > 0.74) return T.SAND;
-        if (u > 0.990 && r > 14) return T.BONES; if (u > 0.9875 && r > 20) return T.HEART; if (u > 0.986 && r > 20) return T.POTION_SPEED;
+        if (u > 0.990 && r > 14) return T.BONES; if (u > 0.9882 && r > 20) return T.HEART; if (u > 0.986 && r > 20) return T.POTION_SPEED;
         if (u < 0.015) return T.GOLD; if (u < 0.019) return T.EMERALD; if (u < 0.026) return T.BOULDER; if (u < 0.029 && r > 25) return T.GAS;
         if (nRock > 0.72) return T.ROCK;
         if (nClay > 0.6) return T.CLAY;
@@ -98,7 +98,7 @@ export class World {
         if (nLava > 0.80) return T.LAVA;
         if (nCave > 0.79) return T.AIR;
         if (nSand > 0.76) return T.SAND;
-        if (u > 0.992) return T.BONES; if (u > 0.9895) return T.HEART; if (u > 0.9875) return T.POTION_SPEED; if (u > 0.9855) return T.POTION_SHIELD;
+        if (u > 0.992) return T.BONES; if (u > 0.9903) return T.HEART; if (u > 0.9875) return T.POTION_SPEED; if (u > 0.9855) return T.POTION_SHIELD;
         if (u < 0.02) return T.GOLD; if (u < 0.03) return T.EMERALD; if (u < 0.033) return T.RUBY; if (u < 0.045) return T.BOULDER; if (u < 0.052) return T.GAS;
         if (nRock > 0.78) return T.HARDROCK; if (nRock > 0.58) return T.ROCK;
         if (nClay > 0.62) return T.CLAY;
@@ -106,7 +106,7 @@ export class World {
       case 2:
         if (nLava > 0.74) return T.LAVA;
         if (nCave > 0.80) return T.AIR;
-        if (u > 0.994) return T.BONES; if (u > 0.991) return T.HEART; if (u > 0.9885) return T.POTION_SPEED; if (u > 0.986) return T.POTION_SHIELD;
+        if (u > 0.994) return T.BONES; if (u > 0.9919) return T.HEART; if (u > 0.9885) return T.POTION_SPEED; if (u > 0.986) return T.POTION_SHIELD;
         if (u < 0.015) return T.GOLD; if (u < 0.023) return T.RUBY; if (u < 0.028) return T.DIAMOND; if (u < 0.031) return T.EMERALD; if (u < 0.046) return T.BOULDER; if (u < 0.054) return T.GAS;
         if (nRock > 0.70) return T.HARDROCK; if (nRock > 0.36) return T.ROCK;
         if (nSand > 0.78) return T.SAND;
@@ -114,14 +114,14 @@ export class World {
       case 3:
         if (nLava > 0.66) return T.LAVA;
         if (nCave > 0.80) return T.AIR;
-        if (u > 0.9905) return T.HEART; if (u > 0.988) return T.POTION_SPEED; if (u > 0.985) return T.POTION_SHIELD;
+        if (u > 0.9913) return T.HEART; if (u > 0.988) return T.POTION_SPEED; if (u > 0.985) return T.POTION_SHIELD;
         if (u < 0.012) return T.CRYSTAL; if (u < 0.02) return T.DIAMOND; if (u < 0.03) return T.RUBY; if (u < 0.04) return T.GOLD; if (u < 0.05) return T.BOULDER; if (u < 0.056) return T.GAS;
         if (nRock > 0.72) return T.HARDROCK; if (nRock > 0.5) return T.ROCK;
         return T.MAGMA;
       case 4:
         if (nLava > 0.64) return T.LAVA;
         if (nCave > 0.82) return T.AIR;
-        if (u > 0.990) return T.HEART; if (u > 0.9875) return T.POTION_SPEED; if (u > 0.985) return T.POTION_SHIELD;
+        if (u > 0.9908) return T.HEART; if (u > 0.9875) return T.POTION_SPEED; if (u > 0.985) return T.POTION_SHIELD;
         if (u < 0.018) return T.CRYSTAL; if (u < 0.03) return T.DIAMOND; if (u < 0.036) return T.RUBY; if (u < 0.046) return T.BOULDER;
         if (nRock > 0.78) return T.BEDROCK; if (nRock > 0.45) return T.HARDROCK;
         return T.MAGMA;
@@ -129,7 +129,7 @@ export class World {
         const t = (r - 1120) / (END_ROW - 1120);
         if (nLava > 0.72 + 0.2 * t) return T.LAVA;
         if (nCave > 0.80) return T.AIR;
-        if (u > 0.993) return T.BONES; if (u > 0.9905) return T.HEART; if (u > 0.988) return T.POTION_SPEED; if (u > 0.9855) return T.POTION_SHIELD;
+        if (u > 0.993) return T.BONES; if (u > 0.9913) return T.HEART; if (u > 0.988) return T.POTION_SPEED; if (u > 0.9855) return T.POTION_SHIELD;
         if (u < 0.02) return T.GOLD; if (u < 0.03) return T.EMERALD; if (u < 0.035) return T.DIAMOND; if (u < 0.048) return T.BOULDER; if (u < 0.055) return T.GAS;
         if (nRock > 0.85 - 0.1 * t) return T.HARDROCK; if (nRock > 0.5 + 0.3 * t) return T.ROCK;
         if (nClay > 0.65) return T.CLAY;
