@@ -21,6 +21,7 @@ try {
 const input = new Input(canvas, document.getElementById('touch')!);
 const audio = new GameAudio();
 const game = new Game(gfx, input, audio, hud);
+(window as unknown as { __digger: Game }).__digger = game; // debugging hook
 const online = new Online();
 game.online = online;
 online.onChange(() => game.renderOnline());
@@ -42,6 +43,7 @@ hud.overlayEl.addEventListener('pointerdown', (e) => {
   e.preventDefault(); unlock(); game.menuAction();
 });
 window.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey) return; // browser shortcuts and the cheat combo are handled elsewhere
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (game.state === 'playing') game.pause(); else if (game.state === 'paused') game.menuAction(); return; }
   if (e.key === 'm' || e.key === 'M') { toggleMute(); return; }
   unlock();

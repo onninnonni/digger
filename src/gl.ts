@@ -9,10 +9,13 @@ layout(location=0) in vec2 aPos;
 layout(location=1) in vec2 aUV;
 layout(location=2) in vec4 aCol;
 uniform vec4 uCam;
+uniform vec2 uRot;
 out vec2 vUV; out vec4 vCol;
 void main(){
   vec2 p = (aPos - uCam.xy) * uCam.zw;
-  gl_Position = vec4(p.x - 1.0, 1.0 - p.y, 0.0, 1.0);
+  vec2 q = vec2(p.x - 1.0, 1.0 - p.y);
+  q = vec2(q.x * uRot.x - q.y * uRot.y, q.x * uRot.y + q.y * uRot.x);
+  gl_Position = vec4(q, 0.0, 1.0);
   vUV = aUV; vCol = aCol;
 }`;
 const FS = `#version 300 es
@@ -28,6 +31,7 @@ export class Renderer {
   private data = new Float32Array(MAX_QUADS * 6 * FLOATS_PER_VERT);
   private n = 0;
   private uCam: WebGLUniformLocation;
+  private uRot: WebGLUniformLocation;
   private cam = [0, 0, 1, 1];
   private additive = false;
   width = 0; height = 0;
@@ -47,6 +51,8 @@ export class Renderer {
     this.prog = prog;
     gl.useProgram(prog);
     this.uCam = gl.getUniformLocation(prog, 'uCam')!;
+    this.uRot = gl.getUniformLocation(prog, 'uRot')!;
+    gl.uniform2f(this.uRot, 1, 0);
 
     this.vao = gl.createVertexArray()!;
     gl.bindVertexArray(this.vao);
@@ -84,6 +90,12 @@ export class Renderer {
     this.flush();
     this.cam = [x, y, 2 / viewW, 2 / viewH];
     this.gl.uniform4f(this.uCam, x, y, 2 / viewW, 2 / viewH);
+  }
+
+  /** Rotate the whole view by `theta` radians around the screen centre. */
+  setRotation(theta: number) {
+    this.flush();
+    this.gl.uniform2f(this.uRot, Math.cos(theta), Math.sin(theta));
   }
 
   begin(r: number, g: number, b: number) {

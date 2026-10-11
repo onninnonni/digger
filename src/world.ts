@@ -18,6 +18,7 @@ HARD[T.AIR] = 0; HARD[T.DIRT] = 1; HARD[T.GRASS] = 1; HARD[T.CLAY] = 1.6; HARD[T
 HARD[T.BEDROCK] = Infinity; HARD[T.GOLD] = 2.2; HARD[T.EMERALD] = 2.6; HARD[T.RUBY] = 3; HARD[T.DIAMOND] = 3.6; HARD[T.CRYSTAL] = 3.2;
 HARD[T.LAVA] = Infinity; HARD[T.MAGMA] = 3; HARD[T.SAND] = 0.5; HARD[T.BOULDER] = 3.4; HARD[T.GAS] = 0.3; HARD[T.CONCRETE] = 3.8;
 HARD[T.RAIL] = 0; HARD[T.TUNNEL] = 0; HARD[T.CRUMBLE] = 0.7; HARD[T.CHINA] = 1;
+HARD[T.HEART] = 0.4; HARD[T.POTION_SPEED] = 0.4; HARD[T.POTION_SHIELD] = 0.4; HARD[T.BONES] = 1.5;
 
 export const VALUE: number[] = [];
 VALUE[T.GOLD] = 50; VALUE[T.EMERALD] = 120; VALUE[T.RUBY] = 250; VALUE[T.DIAMOND] = 400; VALUE[T.CRYSTAL] = 650;
@@ -29,6 +30,7 @@ export const passable = (t: number) => t === T.AIR || t === T.RAIL || t === T.TU
 export const solid = (t: number) => !passable(t);
 export const diggable = (t: number) => solid(t) && HARD[t] < Infinity;
 export const isGem = (t: number) => VALUE[t] !== undefined;
+export const soft = (t: number) => t === T.DIRT || t === T.GRASS || t === T.CLAY || t === T.SAND || t === T.CRUMBLE || t === T.CHINA || t === T.BONES;
 export const falls = (t: number) => t === T.SAND || t === T.BOULDER;
 export const crumbly = (t: number) => t === T.DIRT || t === T.GRASS || t === T.CLAY || t === T.SAND || t === T.CHINA;
 
@@ -87,6 +89,7 @@ export class World {
       case 0:
         if (nCave > 0.80 && r > 12) return T.AIR;
         if (nSand > 0.74) return T.SAND;
+        if (u > 0.990 && r > 14) return T.BONES; if (u > 0.9875 && r > 20) return T.HEART; if (u > 0.986 && r > 20) return T.POTION_SPEED;
         if (u < 0.015) return T.GOLD; if (u < 0.019) return T.EMERALD; if (u < 0.026) return T.BOULDER; if (u < 0.029 && r > 25) return T.GAS;
         if (nRock > 0.72) return T.ROCK;
         if (nClay > 0.6) return T.CLAY;
@@ -95,6 +98,7 @@ export class World {
         if (nLava > 0.80) return T.LAVA;
         if (nCave > 0.79) return T.AIR;
         if (nSand > 0.76) return T.SAND;
+        if (u > 0.992) return T.BONES; if (u > 0.9895) return T.HEART; if (u > 0.9875) return T.POTION_SPEED; if (u > 0.9855) return T.POTION_SHIELD;
         if (u < 0.02) return T.GOLD; if (u < 0.03) return T.EMERALD; if (u < 0.033) return T.RUBY; if (u < 0.045) return T.BOULDER; if (u < 0.052) return T.GAS;
         if (nRock > 0.78) return T.HARDROCK; if (nRock > 0.58) return T.ROCK;
         if (nClay > 0.62) return T.CLAY;
@@ -102,6 +106,7 @@ export class World {
       case 2:
         if (nLava > 0.74) return T.LAVA;
         if (nCave > 0.80) return T.AIR;
+        if (u > 0.994) return T.BONES; if (u > 0.991) return T.HEART; if (u > 0.9885) return T.POTION_SPEED; if (u > 0.986) return T.POTION_SHIELD;
         if (u < 0.015) return T.GOLD; if (u < 0.023) return T.RUBY; if (u < 0.028) return T.DIAMOND; if (u < 0.031) return T.EMERALD; if (u < 0.046) return T.BOULDER; if (u < 0.054) return T.GAS;
         if (nRock > 0.70) return T.HARDROCK; if (nRock > 0.36) return T.ROCK;
         if (nSand > 0.78) return T.SAND;
@@ -109,12 +114,14 @@ export class World {
       case 3:
         if (nLava > 0.66) return T.LAVA;
         if (nCave > 0.80) return T.AIR;
+        if (u > 0.9905) return T.HEART; if (u > 0.988) return T.POTION_SPEED; if (u > 0.985) return T.POTION_SHIELD;
         if (u < 0.012) return T.CRYSTAL; if (u < 0.02) return T.DIAMOND; if (u < 0.03) return T.RUBY; if (u < 0.04) return T.GOLD; if (u < 0.05) return T.BOULDER; if (u < 0.056) return T.GAS;
         if (nRock > 0.72) return T.HARDROCK; if (nRock > 0.5) return T.ROCK;
         return T.MAGMA;
       case 4:
         if (nLava > 0.64) return T.LAVA;
         if (nCave > 0.82) return T.AIR;
+        if (u > 0.990) return T.HEART; if (u > 0.9875) return T.POTION_SPEED; if (u > 0.985) return T.POTION_SHIELD;
         if (u < 0.018) return T.CRYSTAL; if (u < 0.03) return T.DIAMOND; if (u < 0.036) return T.RUBY; if (u < 0.046) return T.BOULDER;
         if (nRock > 0.78) return T.BEDROCK; if (nRock > 0.45) return T.HARDROCK;
         return T.MAGMA;
@@ -122,6 +129,7 @@ export class World {
         const t = (r - 1120) / (END_ROW - 1120);
         if (nLava > 0.72 + 0.2 * t) return T.LAVA;
         if (nCave > 0.80) return T.AIR;
+        if (u > 0.993) return T.BONES; if (u > 0.9905) return T.HEART; if (u > 0.988) return T.POTION_SPEED; if (u > 0.9855) return T.POTION_SHIELD;
         if (u < 0.02) return T.GOLD; if (u < 0.03) return T.EMERALD; if (u < 0.035) return T.DIAMOND; if (u < 0.048) return T.BOULDER; if (u < 0.055) return T.GAS;
         if (nRock > 0.85 - 0.1 * t) return T.HARDROCK; if (nRock > 0.5 + 0.3 * t) return T.ROCK;
         if (nClay > 0.65) return T.CLAY;

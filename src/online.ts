@@ -152,7 +152,7 @@ export class Online {
     let auth = '';
     if (!this.configured) auth = '<p class="muted">Sign-in is not configured on this server yet.</p>';
     else if (this.signedIn) auth = `<div class="who">${this.profile!.picture ? `<img class="avatar" src="${this.profile!.picture}" alt="" referrerpolicy="no-referrer">` : ''}<span>${escapeHtml(this.profile!.name)}</span><button type="button" class="link" data-act="signout">Sign out</button></div>`;
-    else auth = `<div class="gsi-wrap"><div id="gsi-btn"></div></div>${this.pending ? '<p class="muted">Sign in to save this score to the leaderboard.</p>' : ''}`;
+    else auth = `${this.pending ? `<p class="status">Score ${this.pending.score.toLocaleString('en-US')} not saved yet. Sign in with Google to put it on the list.</p>` : '<p class="muted">Sign in with Google to post your best score under your name.</p>'}<div class="gsi-wrap"><div id="gsi-btn"></div></div>`;
     el.innerHTML = `<div class="online"><div class="online-head"><span>🏆 Leaderboard</span><span class="muted">${this.players} player${this.players === 1 ? '' : 's'}</span></div>${list}${auth}${this.status ? `<p class="status">${escapeHtml(this.status)}</p>` : ''}</div>`;
     el.querySelector('[data-act="signout"]')?.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); this.signOut(); });
     const btn = el.querySelector<HTMLElement>('#gsi-btn');

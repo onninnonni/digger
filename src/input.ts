@@ -7,6 +7,10 @@ export class Input {
   /** Any key / tap this frame (used by menus). */
   anyPress = false;
   touchUsed = false;
+  /** Set for one frame when the Cmd/Ctrl + J, P combo is entered. */
+  cheat = false;
+  private cheatArm = 0;
+  private pendingCheat = false;
 
   private keys = new Set<string>();
   private pad = { left: false, right: false, up: false, down: false };
@@ -16,6 +20,13 @@ export class Input {
 
   constructor(canvas: HTMLCanvasElement, padRoot: HTMLElement) {
     window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.code === 'KeyJ' || e.code === 'KeyP')) {
+        e.preventDefault();
+        const now = performance.now();
+        if (e.code === 'KeyJ') this.cheatArm = now;
+        else if (now - this.cheatArm < 2000) { this.pendingCheat = true; this.cheatArm = 0; }
+        return;
+      }
       if (e.repeat) return;
       this.keys.add(e.code);
       this.pendingAny = true;
@@ -79,5 +90,7 @@ export class Input {
     this.prevUp = up;
     this.anyPress = this.pendingAny;
     this.pendingAny = false;
+    this.cheat = this.pendingCheat;
+    this.pendingCheat = false;
   }
 }

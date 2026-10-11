@@ -9,6 +9,7 @@ export enum T {
   AIR = 0, DIRT, GRASS, CLAY, ROCK, HARDROCK, BEDROCK,
   GOLD, EMERALD, RUBY, DIAMOND, CRYSTAL,
   LAVA, MAGMA, SAND, BOULDER, GAS, CONCRETE, RAIL, TUNNEL, CRUMBLE, CHINA,
+  HEART, POTION_SPEED, POTION_SHIELD, BONES,
 }
 
 export enum S {
@@ -16,6 +17,7 @@ export enum S {
   PLAYER0 = 32, PLAYER1 = 33, PLAYER_DIG0 = 34, PLAYER_DIG1 = 35,
   TRAIN_HEAD = 36, TRAIN_BODY = 37, // each spans 2 cells vertically (36/52, 37/53)
   GLOW = 38, DOT = 39, LAVA2 = 40, FLAG = 41, DRIP = 42, PAGODA = 43,
+  MOLE0 = 44, MOLE1 = 45, BEETLE0 = 46, BEETLE1 = 47, WALL = 48, RING = 49,
 }
 
 function mulberry(seed: number) {
@@ -192,6 +194,75 @@ export function buildAtlas(): HTMLCanvasElement {
       ctx.closePath(); ctx.fill();
     };
     star(10, 11, 7); star(22, 5, 2.5); star(25, 11, 2.5); star(24, 18, 2.5); star(20, 23, 2.5);
+  });
+
+  // ---- pickups ----
+  noiseTile(T.HEART, [104, 66, 36], 14);
+  at(T.HEART, () => {
+    ctx.fillStyle = '#ff2d55';
+    ctx.beginPath(); ctx.moveTo(16, 27); ctx.bezierCurveTo(4, 18, 4, 7, 11, 7); ctx.bezierCurveTo(14, 7, 16, 10, 16, 11);
+    ctx.bezierCurveTo(16, 10, 18, 7, 21, 7); ctx.bezierCurveTo(28, 7, 28, 18, 16, 27); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(12, 11, 2.2, 1.4, -0.6, 0, Math.PI * 2); ctx.fill();
+  });
+  const potion = (i: number, liquid: string, hi: string) => {
+    noiseTile(i, [104, 66, 36], 14);
+    at(i, () => {
+      ctx.fillStyle = '#cfe8f5'; ctx.fillRect(13, 4, 6, 4);
+      ctx.fillStyle = 'rgba(220,240,255,0.55)';
+      ctx.beginPath(); ctx.moveTo(13, 8); ctx.lineTo(19, 8); ctx.lineTo(19, 12); ctx.bezierCurveTo(27, 16, 27, 28, 16, 28); ctx.bezierCurveTo(5, 28, 5, 16, 13, 12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = liquid;
+      ctx.beginPath(); ctx.moveTo(10, 17); ctx.lineTo(22, 17); ctx.bezierCurveTo(26, 22, 24, 27, 16, 27); ctx.bezierCurveTo(8, 27, 6, 22, 10, 17); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = hi; ctx.beginPath(); ctx.arc(13, 21, 1.6, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(18, 24, 1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a5a2b'; ctx.fillRect(12, 2, 8, 3);
+    });
+  };
+  potion(T.POTION_SPEED, '#b14dff', '#f0c8ff');
+  potion(T.POTION_SHIELD, '#3aa0ff', '#c8e8ff');
+  noiseTile(T.BONES, [120, 92, 60], 12, 8);
+  at(T.BONES, () => {
+    ctx.fillStyle = '#f2ead6';
+    ctx.beginPath(); ctx.ellipse(11, 12, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(7, 15, 9, 5);
+    ctx.fillStyle = '#3a2a1a'; ctx.beginPath(); ctx.arc(8.5, 11, 2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(13.5, 11, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(8, 17, 1.5, 3); ctx.fillRect(11, 17, 1.5, 3); ctx.fillRect(14, 17, 1.5, 3);
+    ctx.strokeStyle = '#f2ead6'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(19, 24); ctx.lineTo(30, 20); ctx.stroke();
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(21 + k * 2.6, 23.2 - k * 0.9); ctx.lineTo(21 + k * 2.6, 29); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(3, 27); ctx.lineTo(12, 24); ctx.stroke();
+    ctx.fillStyle = '#f2ead6'; ctx.beginPath(); ctx.arc(3, 27, 2, 0, Math.PI * 2); ctx.arc(12, 24, 2, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // ---- monsters ----
+  const mole = (i: number, frame: number) => at(i, () => {
+    const legY = frame ? 1 : 0;
+    ctx.fillStyle = '#5b3a1e'; ctx.beginPath(); ctx.ellipse(15, 19, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.ellipse(15, 17, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff9bb3'; ctx.beginPath(); ctx.arc(28, 18, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.fillRect(21, 13, 2, 2); ctx.fillRect(24, 14, 2, 2);
+    ctx.fillStyle = '#e8d8c0'; ctx.fillRect(26, 22 + legY, 5, 2); ctx.fillRect(25, 25 - legY, 5, 2);
+    ctx.fillRect(6, 25 + legY, 5, 2); ctx.fillRect(10, 27 - legY, 5, 2);
+    ctx.fillStyle = '#fff'; ctx.fillRect(27, 20, 2, 2); ctx.fillRect(30, 20, 1.5, 2);
+  });
+  mole(S.MOLE0, 0); mole(S.MOLE1, 1);
+  const beetle = (i: number, frame: number) => at(i, () => {
+    const legY = frame ? 2 : 0;
+    ctx.strokeStyle = '#2a0a06'; ctx.lineWidth = 2;
+    for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(8 + k * 7, 22); ctx.lineTo(4 + k * 7, 30 - (k % 2 ? legY : -legY)); ctx.stroke(); ctx.beginPath(); ctx.moveTo(8 + k * 7, 22); ctx.lineTo(12 + k * 7, 30 - (k % 2 ? -legY : legY)); ctx.stroke(); }
+    ctx.fillStyle = '#5a1410'; ctx.beginPath(); ctx.ellipse(15, 18, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8f2a1c'; ctx.beginPath(); ctx.ellipse(13, 16, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ff7a2a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(15, 10); ctx.lineTo(15, 26); ctx.stroke();
+    ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.arc(25, 15, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(25, 20, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#2a0a06'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(27, 13); ctx.lineTo(31, 8); ctx.moveTo(27, 22); ctx.lineTo(31, 27); ctx.stroke();
+  });
+  beetle(S.BEETLE0, 0); beetle(S.BEETLE1, 1);
+  at(S.WALL, () => {
+    ctx.fillStyle = '#6e6a5e'; ctx.fillRect(0, 12, 32, 20);
+    ctx.fillStyle = '#8a8578'; for (let y = 14; y < 32; y += 5) for (let x = (y / 5) % 2 ? 0 : 4; x < 32; x += 8) ctx.fillRect(x, y, 7, 4);
+    ctx.fillStyle = '#5a564c'; for (let x = 0; x < 32; x += 8) ctx.fillRect(x, 8, 5, 5);
+  });
+  at(S.RING, () => {
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2); ctx.stroke();
   });
 
   // ---- white + glow + dot ----

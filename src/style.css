@@ -13,6 +13,7 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 #hud-hearts { color: #ff4d6a; font-size: 18px; letter-spacing: 1px; line-height: 1; }
 #btn-mute { pointer-events: auto; margin-left: auto; background: var(--ui); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 8px; width: 40px; font-size: 18px; cursor: pointer; }
 #hud-band { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 54px); left: 12px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; }
+#hud-fx { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 72px); left: 12px; font-size: 13px; font-weight: 800; color: var(--gold); text-shadow: 0 1px 4px #000; }
 #hud-msg { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%) scale(0.8); font-size: clamp(18px, 4vw, 30px); font-weight: 900; text-align: center; padding: 8px 18px; border-radius: 12px; background: rgba(0,0,0,0.45); opacity: 0; transition: opacity 0.15s, transform 0.15s; white-space: nowrap; text-shadow: 0 2px 8px #000; }
 #hud-msg.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 #hud-msg.bad { color: #ff6b6b; } #hud-msg.good { color: var(--gold); }

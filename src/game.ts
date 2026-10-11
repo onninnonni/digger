@@ -1,7 +1,7 @@
 // Core game: player, hazards (lava, cave-ins, boulders, gas, subway trains), scoring, rendering.
 import { T, S } from './atlas';
 import { Renderer } from './gl';
-import { World, W, H, END_ROW, KM_PER_ROW, SPAWN_X, HARD, VALUE, GEM_NAME, BAND_NAMES, band, passable, solid, diggable, isGem, falls, crumbly } from './world';
+import { World, W, H, END_ROW, KM_PER_ROW, SPAWN_X, HARD, VALUE, GEM_NAME, BAND_NAMES, band, passable, solid, diggable, isGem, falls, crumbly, soft } from './world';
 import { Input } from './input';
 import { GameAudio } from './audio';
 import { Hud } from './hud';
@@ -11,11 +11,14 @@ const STEP = 1 / 60;
 const P_W = 0.7, P_H = 0.86;
 const TRAIN_LEN = 9;
 const EPS = 1e-4;
+const MAX_HEARTS = 5;
+const M_W = 0.8, M_H = 0.8;
 
 type State = 'title' | 'playing' | 'gameover' | 'won' | 'paused';
 
 interface Falling { t: number; x: number; y: number; vy: number; }
 interface Train { row: number; active: boolean; x: number; dir: number; cd: number; warned: boolean; speed: number; }
+interface Monster { kind: 'mole' | 'beetle'; x: number; y: number; vx: number; vy: number; dir: number; hp: number; digT: number; digKey: number; onGround: boolean; hurtCd: number; }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; r: number; g: number; b: number; size: number; grav: number; add: boolean; }
 
 const COLOR: Record<number, [number, number, number]> = {
@@ -23,7 +26,7 @@ const COLOR: Record<number, [number, number, number]> = {
   [T.CLAY]: [0.65, 0.42, 0.27], [T.ROCK]: [0.44, 0.44, 0.46], [T.HARDROCK]: [0.24, 0.24, 0.3], [T.GOLD]: [1, 0.82, 0.25],
   [T.EMERALD]: [0.12, 0.72, 0.43], [T.RUBY]: [0.88, 0.13, 0.25], [T.DIAMOND]: [0.44, 0.89, 1], [T.CRYSTAL]: [0.65, 0.3, 1],
   [T.MAGMA]: [0.23, 0.11, 0.09], [T.SAND]: [0.84, 0.7, 0.42], [T.GAS]: [0.47, 1, 0.31], [T.CONCRETE]: [0.56, 0.56, 0.53],
-  [T.CHINA]: [0.75, 0.16, 0.16], [T.LAVA]: [1, 0.4, 0.05],
+  [T.CHINA]: [0.75, 0.16, 0.16], [T.LAVA]: [1, 0.4, 0.05], [T.HEART]: [1, 0.2, 0.35], [T.POTION_SPEED]: [0.7, 0.3, 1], [T.POTION_SHIELD]: [0.25, 0.63, 1], [T.BONES]: [0.95, 0.92, 0.84],
 };
 const GEM_COLOR: Record<number, string> = { [T.GOLD]: '#ffd23f', [T.EMERALD]: '#5dffb0', [T.RUBY]: '#ff5c7a', [T.DIAMOND]: '#9ff3ff', [T.CRYSTAL]: '#d9a3ff' };
 
@@ -50,7 +53,9 @@ export class Game {
   player = { x: SPAWN_X + 0.5, y: 3.5, vx: 0, vy: 0, facing: 1, onGround: false, invuln: 0, digging: false };
   falling: Falling[] = [];
   trains: Train[] = [];
+  monsters: Monster[] = [];
   parts: Particle[] = [];
+  god = false; shield = false; speedT = 0; monsterT = 10; flip = 0;
   dig: { x: number; y: number; p: number } | null = null;
   safe = { x: SPAWN_X + 0.5, y: 3.5 };
 
@@ -79,7 +84,8 @@ export class Game {
     this.world = new World((Math.random() * 1e9) | 0);
     this.player = { x: SPAWN_X + 0.5, y: 3.5, vx: 0, vy: 0, facing: 1, onGround: false, invuln: 0, digging: false };
     this.safe = { x: SPAWN_X + 0.5, y: 3.5 };
-    this.falling = []; this.parts = []; this.dig = null;
+    this.falling = []; this.parts = []; this.dig = null; this.monsters = [];
+    this.shield = false; this.speedT = 0; this.monsterT = 10; this.flip = 0;
     this.trains = this.world.tunnels.map((row) => ({ row, active: false, x: 0, dir: 1, cd: 2 + Math.random() * 6, warned: false, speed: 20 }));
     this.score = 0; this.level = 1; this.xpBase = 0; this.xpNext = 500; this.hearts = 3; this.maxRow = 0; this.gems = 0;
     this.combo = 0; this.comboT = 0; this.shake = 0; this.elapsed = 0; this.acc = 0;
@@ -88,7 +94,7 @@ export class Game {
     this.audio.theme = 'dig';
     this.hud.hideOverlay();
     this.hud.setCombo(0);
-    this.hud.message('Dig down! ▼', 'good', 1600);
+    this.hud.message(this.god ? 'GOD MODE · Dig down! ▼' : 'Dig down! ▼', 'good', 1600);
   }
 
   /** Called from a user-gesture handler (overlay tap / keydown). */
@@ -116,7 +122,9 @@ export class Game {
       <div class="legend">
         <div>🟨 Gold / 💎 gems = points</div><div>🟧 Lava = don't touch</div>
         <div>🪨 Boulders fall</div><div>🟩 Green gas explodes</div>
-        <div>🚇 Trains: wait for them</div><div>❤️ Level up = +1 heart</div>
+        <div>🚇 Trains: wait for them</div><div>❤️ Hearts heal, level-ups too</div>
+        <div>🧪 Potions: turbo drill / shield</div><div>🦴 Dinosaur bones = +300</div>
+        <div>🐾 Moles & beetles chase you</div><div>🔩 Drill them for points</div>
       </div>
       <p class="keys">${touch
         ? 'Hold anywhere to dig down · drag to move or dig sideways · swipe up to jump · or use the buttons'
@@ -182,14 +190,26 @@ export class Game {
   }
 
   depthKm() { return Math.max(0, (this.maxRow - 4) * KM_PER_ROW); }
-  digRate() { return 4.2 * (1 + 0.22 * (this.level - 1)); }
-  moveSpeed() { return Math.min(9.5, 6 * (1 + 0.04 * (this.level - 1))); }
+  digRate() { return 4.2 * (1 + 0.22 * (this.level - 1)) * (this.speedT > 0 ? 2 : 1); }
+  moveSpeed() { return Math.min(9.5, 6 * (1 + 0.04 * (this.level - 1))) * (this.speedT > 0 ? 1.25 : 1); }
+  private fxText() {
+    const fx: string[] = [];
+    if (this.god) fx.push('GOD MODE');
+    if (this.shield) fx.push('🛡 shield');
+    if (this.speedT > 0) fx.push(`⚡ ${Math.ceil(this.speedT)}s`);
+    return fx.join('  ·  ');
+  }
 
   // ---------------- update ----------------
   update(dtRaw: number) {
     const dt = Math.min(dtRaw, 0.05);
     this.time += dt;
     this.input.update();
+    if (this.input.cheat) {
+      this.god = !this.god;
+      this.hud.message(this.god ? 'GOD MODE ON · no damage' : 'GOD MODE OFF', this.god ? 'good' : 'bad', 2000);
+      this.audio.levelUp();
+    }
     if (this.state !== 'playing') {
       if (this.input.anyPress && this.state !== 'paused') this.menuAction();
       else if (this.input.anyPress && this.state === 'paused') this.menuAction();
@@ -209,7 +229,10 @@ export class Game {
     this.tickTiles(dt);
     this.tickFalling(dt);
     this.tickTrains(dt);
+    this.tickMonsters(dt);
+    if (this.state !== 'playing') return;
     this.tickEvents(dt);
+    if (this.speedT > 0) this.speedT -= dt;
     this.tickParticles(dt);
     this.shake = Math.max(0, this.shake - dt * 2.2);
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) { this.combo = 0; this.hud.setCombo(0); } }
@@ -217,7 +240,7 @@ export class Game {
     this.audio.intensity = Math.min(1, 0.12 + row / 950 + (this.hearts === 1 ? 0.15 : 0));
     if (row >= END_ROW && this.audio.theme !== 'china') this.audio.theme = 'china';
     const b = band(Math.max(0, row));
-    this.hud.update(this.score, this.depthKm(), this.level, (this.score - this.xpBase) / (this.xpNext - this.xpBase), this.hearts, BAND_NAMES[b], this.digRate() / 4.2);
+    this.hud.update(this.score, this.depthKm(), this.level, (this.score - this.xpBase) / (this.xpNext - this.xpBase), this.hearts, BAND_NAMES[b], this.digRate() / 4.2, MAX_HEARTS, this.fxText());
   }
 
   private tickPlayer(dt: number) {
@@ -256,8 +279,23 @@ export class Game {
       if (this.digGrace <= 0 || !diggable(w.get(this.dig.x, this.dig.y))) this.dig = null;
     }
 
+    // drilling into a monster hurts it
+    if (dx || inp.down || inp.up) {
+      const ox = dx ? dx * 0.8 : 0, oy = !dx && inp.down ? 0.8 : !dx && inp.up ? -0.8 : 0;
+      const bx0 = p.x - P_W / 2 + ox, bx1 = p.x + P_W / 2 + ox, by0 = p.y - P_H / 2 + oy, by1 = p.y + P_H / 2 + oy;
+      for (const m of this.monsters) {
+        if (m.x + M_W / 2 > bx0 && m.x - M_W / 2 < bx1 && m.y + M_H / 2 > by0 && m.y - M_H / 2 < by1) {
+          m.hp -= 3 * (this.speedT > 0 ? 2 : 1) * dt;
+          p.digging = true;
+          if (Math.random() < 0.3) this.burst(m.x, m.y, 2, [1, 0.8, 0.3], 4, 0.1, 0.3, 10, true);
+          if (m.hp <= 0) this.killMonster(m, true);
+        }
+      }
+    }
+
     p.vx = dx * this.moveSpeed();
     p.vy = Math.min(p.vy + 36 * dt, 24);
+    if (p.y > END_ROW + 2.5) p.vy = Math.min(p.vy, 1.6); // float gently out of the ground on the far side
     this.moveX(p.vx * dt);
     this.moveY(p.vy * dt);
 
@@ -269,7 +307,7 @@ export class Game {
 
     const row = Math.floor(y1);
     if (row > this.maxRow) { this.addScore(2 * (row - this.maxRow)); this.maxRow = row; }
-    if (p.y >= END_ROW + 5) { this.win(); return; }
+    if (p.y >= END_ROW + 7) { this.win(); return; }
 
     // remember a safe spot
     this.safeT -= dt;
@@ -309,6 +347,16 @@ export class Game {
     w.set(x, y, T.AIR);
     const c = COLOR[t] || [0.4, 0.4, 0.4];
     this.burst(x + 0.5, y + 0.5, 10, c, 5, 0.16, 0.6);
+    if (t === T.HEART || t === T.POTION_SPEED || t === T.POTION_SHIELD || t === T.BONES) {
+      const s = this.toScreen(x + 0.5, y + 0.2);
+      this.audio.gem(t === T.BONES ? 400 : 150);
+      this.burst(x + 0.5, y + 0.5, 16, c, 4, 0.14, 0.9, -4, true);
+      if (t === T.HEART) { this.hearts = Math.min(MAX_HEARTS, this.hearts + 1); this.hud.popup(s[0], s[1], '+1 ♥', '#ff4d6a'); }
+      else if (t === T.POTION_SPEED) { this.speedT = 12; this.hud.popup(s[0], s[1], '⚡ Turbo drill 12s', '#d9a3ff'); }
+      else if (t === T.POTION_SHIELD) { this.shield = true; this.hud.popup(s[0], s[1], '🛡 Shield', '#9fd3ff'); }
+      else { this.gems++; this.addScore(300); this.hud.popup(s[0], s[1], '🦴 Dinosaur bones +300', '#f2ead6'); }
+      return;
+    }
     if (isGem(t)) {
       this.combo = Math.min(8, this.combo + 1); this.comboT = 3.5;
       this.hud.setCombo(this.combo);
@@ -323,7 +371,7 @@ export class Game {
     if (t === T.GAS) { this.explode(x, y, 2); return; }
 
     // cave-in: tiles above the fresh hole may crumble
-    const base = 0.1 + Math.min(0.35, y / 1600);
+    const base = 0.08 + Math.min(0.3, y / 1800);
     for (let dy = 1; dy <= 3; dy++) {
       const tt = w.get(x, y - dy);
       if (crumbly(tt) && Math.random() < base / dy) { w.set(x, y - dy, T.CRUMBLE); w.timer[(y - dy) * W + x] = 0.5 + Math.random() * 1.4; if (dy === 1) this.audio.crumble(); }
@@ -340,7 +388,7 @@ export class Game {
       this.level++;
       this.xpBase = this.xpNext;
       this.xpNext += Math.round(500 * Math.pow(1.4, this.level - 1));
-      this.hearts = Math.min(3, this.hearts + 1);
+      this.hearts = Math.min(MAX_HEARTS, this.hearts + 1);
       this.audio.levelUp();
       this.hud.flash('levelup');
       this.hud.message(`LEVEL ${this.level} · Drill speed ×${(this.digRate() / 4.2).toFixed(1)}`, 'good', 2200);
@@ -370,7 +418,14 @@ export class Game {
 
   private hurt(reason: string) {
     const p = this.player;
-    if (this.state !== 'playing' || p.invuln > 0) return;
+    if (this.state !== 'playing' || p.invuln > 0 || this.god) return;
+    if (this.shield) {
+      this.shield = false; p.invuln = 1.5;
+      this.audio.thud(); this.shake = Math.min(2, this.shake + 0.5);
+      this.hud.message('Shield absorbed the hit!', 'good', 1500);
+      this.burst(p.x, p.y, 24, [0.4, 0.7, 1], 6, 0.16, 0.6, -2, true);
+      return;
+    }
     this.hearts--;
     this.audio.hurt();
     this.shake = Math.min(2, this.shake + 1.2);
@@ -471,6 +526,10 @@ export class Game {
       }
       if (landed) { this.falling.splice(k, 1); continue; }
       f.y = ny;
+      for (let mi = this.monsters.length - 1; mi >= 0; mi--) {
+        const m = this.monsters[mi];
+        if (f.x + 1 > m.x - M_W / 2 && f.x < m.x + M_W / 2 && f.y + 1 > m.y - M_H / 2 && f.y < m.y + M_H / 2) this.killMonster(m, false);
+      }
       // hit the player?
       if (f.x + 1 > px0 && f.x < px1 && f.y + 1 > py0 && f.y < py1) {
         this.hurt(f.t === T.BOULDER ? 'Crushed by a boulder' : f.t === T.SAND ? 'Buried in a cave-in' : 'Hit by falling lava');
@@ -486,7 +545,7 @@ export class Game {
       if (dist > 70) continue;
       if (!tr.active) {
         tr.cd -= dt;
-        if (!tr.warned && tr.cd <= 1.7) { tr.warned = true; tr.dir = Math.random() < 0.5 ? -1 : 1; if (dist < 28) this.audio.horn(); }
+        if (!tr.warned && tr.cd <= 2.2) { tr.warned = true; tr.dir = Math.random() < 0.5 ? -1 : 1; if (dist < 28) this.audio.horn(); }
         if (tr.cd <= 0) { tr.active = true; tr.x = tr.dir > 0 ? -TRAIN_LEN : W; if (dist < 28) this.audio.trainPass(); }
         continue;
       }
@@ -502,7 +561,7 @@ export class Game {
     const w = this.world, p = this.player, py = Math.floor(p.y), b = band(Math.max(0, py));
     this.lavaRainT -= dt;
     if (this.lavaRainT <= 0) {
-      this.lavaRainT = b >= 3 && b <= 4 ? 1.6 + Math.random() * 2.5 : b === 2 || b === 5 ? 4 + Math.random() * 5 : 30;
+      this.lavaRainT = b >= 3 && b <= 4 ? 2.2 + Math.random() * 3 : b === 2 || b === 5 ? 5 + Math.random() * 6 : 30;
       for (let tries = 0; tries < 10; tries++) {
         const x = 1 + Math.floor(Math.random() * (W - 2)), r = py - 5 - Math.floor(Math.random() * 14);
         if (r > 6 && w.get(x, r) === T.AIR && w.get(x, r + 1) === T.AIR) {
@@ -524,6 +583,97 @@ export class Game {
           break;
         }
       }
+    }
+  }
+
+  // ---------------- monsters ----------------
+  private spawnMonster() {
+    const w = this.world, p = this.player, py = Math.floor(p.y);
+    for (let tries = 0; tries < 24; tries++) {
+      const x = 1 + Math.floor(Math.random() * (W - 2)), r = py + (Math.random() < 0.5 ? -1 : 1) * (7 + Math.floor(Math.random() * 12));
+      if (r < 10 || r >= END_ROW - 6) continue;
+      if (w.get(x, r) !== T.AIR || !solid(w.get(x, r + 1))) continue;
+      const kind: Monster['kind'] = band(r) >= 3 ? 'beetle' : 'mole';
+      this.monsters.push({ kind, x: x + 0.5, y: r + 0.5, vx: 0, vy: 0, dir: 1, hp: kind === 'beetle' ? 4 : 3, digT: 0, digKey: -1, onGround: false, hurtCd: 0 });
+      this.audio.rumble();
+      return;
+    }
+  }
+
+  private killMonster(m: Monster, byPlayer: boolean) {
+    const i = this.monsters.indexOf(m);
+    if (i < 0) return;
+    this.monsters.splice(i, 1);
+    this.burst(m.x, m.y, 18, m.kind === 'beetle' ? [0.9, 0.3, 0.1] : [0.45, 0.28, 0.14], 5, 0.14, 0.7);
+    this.audio.thud();
+    if (byPlayer) {
+      const pts = m.kind === 'beetle' ? 250 : 150;
+      this.addScore(pts);
+      const s = this.toScreen(m.x, m.y - 0.3);
+      this.hud.popup(s[0], s[1], `${m.kind === 'beetle' ? 'Beetle' : 'Mole'} drilled +${pts}`, '#ffb347');
+    }
+  }
+
+  private moveMonster(m: Monster, dx: number, dy: number) {
+    if (dx) {
+      const nx = m.x + dx;
+      if (this.collides(nx - M_W / 2, m.y - M_H / 2, nx + M_W / 2, m.y + M_H / 2)) m.vx = 0; else m.x = nx;
+    }
+    if (dy) {
+      const ny = m.y + dy;
+      m.onGround = false;
+      if (this.collides(m.x - M_W / 2, ny - M_H / 2, m.x + M_W / 2, ny + M_H / 2)) {
+        if (!this.collides(m.x - M_W / 2, m.y - M_H / 2, m.x + M_W / 2, m.y + M_H / 2)) m.y = dy > 0 ? Math.floor(ny + M_H / 2) - M_H / 2 - EPS : Math.ceil(ny - M_H / 2) + M_H / 2 + EPS;
+        if (dy > 0) m.onGround = true;
+        m.vy = 0;
+      } else m.y = ny;
+    }
+  }
+
+  private tickMonsters(dt: number) {
+    const w = this.world, p = this.player, ms = this.monsters;
+    for (let k = ms.length - 1; k >= 0; k--) {
+      const m = ms[k];
+      if (Math.abs(m.y - p.y) > 45) { ms.splice(k, 1); continue; }
+      m.hurtCd = Math.max(0, m.hurtCd - dt);
+      const speed = m.kind === 'beetle' ? 3.6 : 2.8;
+      const dx = p.x - m.x, dy = p.y - m.y;
+      const cx = Math.floor(m.x), cy = Math.floor(m.y);
+      let want = Math.abs(dx) > 0.35 ? Math.sign(dx) : 0;
+      if (m.hurtCd > 0.8) want = -Math.sign(dx) || 1;
+      if (want) m.dir = want;
+      m.vx = 0;
+      let digCell = -1;
+      if (want) {
+        const nx = Math.floor(m.x + want * (M_W / 2 + 0.15)), t = w.get(nx, cy);
+        if (passable(t)) m.vx = want * speed;
+        else if (m.onGround && passable(w.get(nx, cy - 1)) && passable(w.get(cx, cy - 1))) m.vy = -9;
+        else if (soft(t) || (m.kind === 'beetle' && diggable(t) && HARD[t] <= 3)) digCell = cy * W + nx;
+      }
+      if (digCell < 0 && m.onGround && Math.abs(dx) < 2.5) {
+        if (dy > 2.5) { const t = w.get(cx, cy + 1); if (soft(t) || (m.kind === 'beetle' && diggable(t) && HARD[t] <= 3)) digCell = (cy + 1) * W + cx; }
+        else if (dy < -2.5) { const t = w.get(cx, cy - 1); if (soft(t)) digCell = (cy - 1) * W + cx; else if (passable(t)) m.vy = -9; }
+      }
+      if (digCell >= 0) {
+        if (m.digKey !== digCell) { m.digKey = digCell; m.digT = 0; }
+        m.digT += dt;
+        if (Math.random() < 0.15) this.burst(m.x + m.dir * 0.4, m.y, 2, COLOR[T.DIRT], 2, 0.1, 0.4);
+        if (m.digT > (m.kind === 'beetle' ? 0.8 : 1.2)) { w.set(digCell % W, Math.floor(digCell / W), T.AIR); m.digKey = -1; }
+      } else m.digKey = -1;
+      m.vy = Math.min(m.vy + 36 * dt, 24);
+      this.moveMonster(m, m.vx * dt, 0);
+      this.moveMonster(m, 0, m.vy * dt);
+      if (m.kind === 'mole' && w.get(Math.floor(m.x), Math.floor(m.y)) === T.LAVA) { this.killMonster(m, false); continue; }
+      if (m.hurtCd <= 0 && m.x + M_W / 2 > p.x - P_W / 2 && m.x - M_W / 2 < p.x + P_W / 2 && m.y + M_H / 2 > p.y - P_H / 2 && m.y - M_H / 2 < p.y + P_H / 2) {
+        m.hurtCd = 1.6;
+        this.hurt(m.kind === 'beetle' ? 'Mauled by a magma beetle' : 'Bitten by a mole');
+        if (this.state !== 'playing') return;
+      }
+    }
+    this.monsterT -= dt;
+    if (this.monsterT <= 0) {
+      this.monsterT = 7 + Math.random() * 8;
+      if (Math.floor(p.y) > 35 && ms.length < 3) this.spawnMonster();
     }
   }
 
@@ -557,7 +707,9 @@ export class Game {
     this.tilePx = Math.min(cw / W, ch / 26);
     this.viewW = cw / this.tilePx; this.viewH = ch / this.tilePx;
     this.camX = (W - this.viewW) / 2;
-    const targetY = p.y - this.viewH * 0.42;
+    const flipTarget = p.y > END_ROW - 1 && this.state !== 'title' ? 1 : 0;
+    this.flip += (flipTarget - this.flip) * Math.min(1, dt * 2);
+    const targetY = p.y - this.viewH * (0.42 + 0.08 * this.flip);
     if (this.state === 'title') this.camY = -3;
     else this.camY += (targetY - this.camY) * Math.min(1, dt * 7);
     this.camY = Math.max(-3, Math.min(H - this.viewH + 1, this.camY));
@@ -568,6 +720,7 @@ export class Game {
     const sky = mid < 10 ? Math.max(0, Math.min(1, (10 - mid) / 10)) : mid > END_ROW + 1 ? 1 : 0;
     g.begin(0.05 + 0.4 * sky, 0.03 + 0.67 * sky, 0.02 + 0.95 * sky);
     g.setCamera(camX, camY, this.viewW, this.viewH);
+    g.setRotation(this.flip * Math.PI);
 
     // ---- lighting grid (per tile corner) ----
     const c0 = Math.floor(camX) - 1, c1 = Math.ceil(camX + this.viewW) + 1, r0 = Math.floor(camY) - 1, r1 = Math.ceil(camY + this.viewH) + 1;
@@ -593,6 +746,7 @@ export class Game {
       else if (t === T.CRYSTAL) addLight(c + 0.5, r + 0.5, 2, 2, 0.25, 0.1, 0.4);
     }
     for (const f of this.falling) if (f.t === T.LAVA && f.y > r0 && f.y < r1) addLight(f.x + 0.5, f.y + 0.5, 3.5, 2, 0.75, 0.32, 0.06);
+    for (const m of this.monsters) if (m.kind === 'beetle' && m.y > r0 && m.y < r1) addLight(m.x, m.y, 2.5, 2, 0.5, 0.2, 0.05);
     for (const tr of this.trains) if (tr.active && tr.row > r0 - 3 && tr.row < r1 + 3) { const hx = tr.dir > 0 ? tr.x + TRAIN_LEN : tr.x; addLight(hx + tr.dir * 1.5, tr.row + 1, 5, 1.5, 0.9, 0.85, 0.6); }
 
     // ---- tiles ----
@@ -619,10 +773,23 @@ export class Game {
       }
     }
 
-    // China decorations
+    // The far side: drawn upside down in world space so it stands upright once the view has flipped.
     if (r1 >= END_ROW + 2) {
-      for (let c = 2; c < W - 2; c += 4) g.quad(c, END_ROW + 4.2, 1, -1.2, S.FLAG, 1, 1, 1, 1);
-      g.quad(SPAWN_X - 1.5, END_ROW + 6.5, 3, -3.5, S.PAGODA, 1, 1, 1, 1);
+      const gy = END_ROW + 3;
+      for (let c = 1; c < W - 1; c++) g.quad(c, gy + 1.2, 1, -1.2, S.WALL, 1, 1, 1, 1, true);
+      for (let c = 2; c < W - 2; c += 4) g.quad(c, gy + 2.4, 1, -1.2, S.FLAG, 1, 1, 1, 1, true);
+      g.quad(SPAWN_X - 2.5, gy + 4.7, 3, -3.5, S.PAGODA, 1, 1, 1, 1, true);
+      g.quad(SPAWN_X + 2, gy + 3.6, 2, -2.4, S.PAGODA, 1, 1, 1, 1, true);
+    }
+
+    // monsters
+    for (const m of this.monsters) {
+      if (m.y < r0 - 2 || m.y > r1 + 2) continue;
+      const frame = Math.floor(this.time * 8 + m.x) & 1;
+      const idx = m.kind === 'mole' ? (frame ? S.MOLE1 : S.MOLE0) : (frame ? S.BEETLE1 : S.BEETLE0);
+      ambient(m.y, amb);
+      const near = Math.max(0, 1 - Math.hypot(m.x - p.x, m.y - p.y) / 7);
+      g.quad(m.x - 0.5, m.y - 0.5, 1, 1, idx, amb[0] + near, amb[1] + near * 0.9, amb[2] + near * 0.8, 1, m.dir < 0);
     }
 
     // dig progress
@@ -664,6 +831,8 @@ export class Game {
       g.quad(p.x - 0.5, p.y - 0.5, 1, 1, idx, 1, 1, 1, blink ? 0.35 : 1, p.facing < 0);
     }
 
+    if (this.shield && this.state !== 'title') g.quad(p.x - 0.75, p.y - 0.75, 1.5, 1.5, S.RING, 0.5, 0.8, 1, 0.6 + 0.3 * Math.sin(this.time * 6));
+
     // particles (normal)
     for (const q of this.parts) if (!q.add) g.quad(q.x - q.size / 2, q.y - q.size / 2, q.size, q.size, S.DOT, q.r, q.g, q.b, Math.min(1, q.life / q.max * 2));
 
@@ -675,6 +844,8 @@ export class Game {
       if (w.get(c, r) === T.LAVA) g.quad(c - 0.8, r - 0.8, 2.6, 2.6, S.GLOW, 1, 0.45, 0.1, 0.2);
     }
     for (const f of this.falling) if (f.t === T.LAVA) g.quad(f.x - 1, f.y - 1, 3, 3, S.GLOW, 1, 0.5, 0.1, 0.5);
+    for (const m of this.monsters) if (m.kind === 'beetle') g.quad(m.x - 1, m.y - 1, 2, 2, S.GLOW, 1, 0.45, 0.1, 0.3);
+    if (this.speedT > 0 && this.state !== 'title') g.quad(p.x - 1.2, p.y - 1.2, 2.4, 2.4, S.GLOW, 0.7, 0.3, 1, 0.25 + 0.15 * Math.sin(this.time * 12));
     for (const tr of this.trains) {
       if (!tr.active || tr.row < r0 - 3 || tr.row > r1 + 3) continue;
       const hx = tr.dir > 0 ? tr.x + TRAIN_LEN : tr.x;
