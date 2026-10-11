@@ -41,10 +41,14 @@ ssh -p 2323 onni@pikos.org 'cp ~/digger-backend/digger.service ~/.config/systemd
 ```
 
 `~/digger-backend/config.json` holds the port and accepted client IDs (see `server/config.example.json`).
-Caddy must route the API to the service. The permanent way is the block in `server/Caddyfile.snippet`
-in `/etc/caddy/Caddyfile` (needs root). Until that is done, `server/caddy-route.sh` injects the same
-route into the running Caddy through its local admin API, and the `digger-caddy-route.timer` user
-timer re-applies it within two minutes of any Caddy reload.
+Caddy routes the API to the service with the block in `server/Caddyfile.snippet`, which is in
+`/etc/caddy/Caddyfile`. `server/caddy-route.sh` and its user timer can inject the same route through
+Caddy's local admin API if the file is ever reset.
+
+The Google OAuth client is "Digger web" in the Google Cloud project "My Maps Project", with
+`https://pikos.org` as its authorized JavaScript origin. The consent screen is published (in
+production) and only asks for name, email and profile picture, so no Google verification is needed.
+The privacy page linked from the consent screen is `public/privacy.html`.
 
 ## Development
 
